@@ -9,4 +9,13 @@ class Preprocessor:
         self.sample_rate = sample_rate
         self.windows = torch.hann_window(fft_bins)
 
-    def to_spectrogram(self, waveform):
+    def waveform_to_spectrogram(self, waveform):
+        spec = torch.stft(
+            input=waveform,
+            n_ftt=self.ftt_bins,
+            hop_length=self.hop_len,
+            win_length=self.windows,
+            return_complex=True
+        )
+
+        return spec
