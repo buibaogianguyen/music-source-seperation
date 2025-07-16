@@ -19,3 +19,14 @@ class Preprocessor:
         )
 
         return spec
+    
+    def spectrogram_to_waveform(self, spec, length):
+        waveform = torch.istft(
+            input=spec,
+            n_ftt=self.fft_bins,
+            hop_length=self.hop_len,
+            win_length=self.windows,
+            length=length
+        )
+
+        return waveform
