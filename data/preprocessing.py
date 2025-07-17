@@ -30,3 +30,11 @@ class Preprocessor:
         )
 
         return waveform
+
+    def normalize_spectrogram(self, spec):
+        mag = spec.abs()
+        mag = (mag-mag.mean()) / (mag.std() + 1e-8)
+        return mag
+    
+    def get_phase(self,spec):
+        return torch.angle(spec)
