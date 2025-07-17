@@ -29,3 +29,18 @@ class DTTNet(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self,x):
+        skips = []
+
+        # Encoder
+        for layer in self.encoder:
+            x = layer(x)
+            skips.append(x)
+            x = self.downsample(x)
+
+        x = self.dual_path(x)
+
+        #Decoder
+        for i, layer in enumerate(self.decoder):
+            x = self.upsample(x)
+            x = torch.cat([x, skips[-(i+1)]], dim=1)
+            x = layer(x)
