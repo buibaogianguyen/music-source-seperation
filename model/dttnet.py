@@ -5,7 +5,7 @@ from .tfc_tdf import TFCTDFBlock
 from .dual_path import DualPathModule
 
 class DTTNet(nn.Module):
-    def __init__(self, in_channels, out_channels, num_sources, ftt_bins):
+    def __init__(self, in_channels, num_sources, fft_bins):
         super(DTTNet,self).__init__()
         self.encoder = nn.ModuleList([
             TFCTDFBlock(in_channels, 32),

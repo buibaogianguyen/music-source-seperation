@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class TFCTDFBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, min_bn_units):
-        super(TFCTDFBlock, self).__init__
+    def __init__(self, in_channels, out_channels, kernel_size=(3,3), min_bn_units=16):
+        super(TFCTDFBlock, self).__init__()
         self.conv = nn.Conv2d(
             in_channels=in_channels,
             out_channels=out_channels,
