@@ -14,7 +14,7 @@ class DTTNet(nn.Module):
             TFCTDFBlock(128,256)
         ])
 
-        self.downsample = nn.MaxPool2(kernel_size=2)
+        self.downsample = nn.MaxPool2d(kernel_size=2)
         self.dual_path = DualPathModule(channels=256)
 
         self.decoder = nn.ModuleList([
