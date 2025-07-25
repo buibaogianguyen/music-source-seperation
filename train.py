@@ -6,16 +6,3 @@ from utils.audio_utils import load_musdb
 from utils.loss import TimeFreqDomainLoss
 import os
 from torch.utils.data import DataLoader, Dataset
-
-class MUSDBDataset(Dataset):
-    def __init__(self, root_dir, sample_rate=44100, segment_len = 44100*4):
-        self.root_dir = root_dir
-        for d in os.listdir(root_dir):
-            if os.path.isdir(os.path.join(root_dir, d)):
-                self.tracks = [os.path.join(root_dir, d)] 
-        
-        self.sample_rate = sample_rate
-        self.segment_len = segment_len
-
-    def __len__(self):
-        return len(self.tracks) * 10
