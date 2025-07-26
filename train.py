@@ -28,3 +28,9 @@ class MUSDBDataset(Dataset):
         vocals = vocals[:, start:start+self.segment_length]
         background = background[:, start:start+self.segment_length]
         return mix, vocals, background
+
+def train(model, optim, criterion, epochs, device):
+    for epoch in range(epochs):
+        model.train()
+
+
