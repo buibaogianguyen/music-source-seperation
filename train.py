@@ -22,15 +22,30 @@ class MUSDBDataset(Dataset):
     
     def __getitem__(self, idx):
         track_path = self.tracks[idx // 10]
-        mix, vocals, background = load_musdb(track_path, self.sample_rate)
+        mix, vocals, bg = load_musdb(track_path, self.sample_rate)
         start = torch.randint(0, mix.size(-1) - self.segment_length, (1,)).item()
         mix = mix[:, start:start+self.segment_length]
         vocals = vocals[:, start:start+self.segment_length]
-        background = background[:, start:start+self.segment_length]
-        return mix, vocals, background
+        bg = bg[:, start:start+self.segment_length]
+        return mix, vocals, bg
 
-def train(model, optim, criterion, epochs, device):
+def train(model, optim, criterion, epochs, device, dataloader):
     for epoch in range(epochs):
         model.train()
+        for mix, vocals, bg in dataloader:
+            mix, vocals, bg = mix.to(device), vocals.to(device), bg.to(device)
 
+
+if __name__ == '__main__':
+    lr = 0.001
+    epochs = 100
+
+    model = DTTNet(in_channels=2, num_sources=2, fft_bins=2048)
+    optim = optim.Adam(model.parameters(), lr=lr)
+    criterion = TimeFreqDomainLoss(alpha=0.5)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    dataset = MUSDBDataset(root_dir='')
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+
+    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader)
 
