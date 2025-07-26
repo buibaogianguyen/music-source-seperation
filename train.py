@@ -29,11 +29,14 @@ class MUSDBDataset(Dataset):
         bg = bg[:, start:start+self.segment_length]
         return mix, vocals, bg
 
-def train(model, optim, criterion, epochs, device, dataloader):
+def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
     for epoch in range(epochs):
         model.train()
         for mix, vocals, bg in dataloader:
             mix, vocals, bg = mix.to(device), vocals.to(device), bg.to(device)
+            mix_spec = preprocessor.waveform_to_spectrogram(mix)
+            vocals_spec = preprocessor.waveform_to_spectrogram(vocals)
+            bg_spec = preprocessor.waveform_to_spectrogram(bg)
 
 
 if __name__ == '__main__':
@@ -46,6 +49,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dataset = MUSDBDataset(root_dir='')
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+    preprocessor = Preprocessor(fft_bins=2048, hop_len=512, sample_rate=44100)
 
-    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader)
+    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader, preprocessor=preprocessor)
 
