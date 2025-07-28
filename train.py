@@ -72,7 +72,20 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
             mix_mag = preprocessor.normalize_spectrogram(mix_spec)
             masks = model(mix_mag)
 
+            pred_vocals_spec = masks[:, :, 0, :, :]
+            pred_bg_spec = masks[:, :, 1, :, :]
+            pred_vocals = preprocessor.spectrogram_to_waveform(pred_vocals_spec, mix.size(-1))
+            pred_bg = preprocessor.spectrogram_to_waveform(pred_bg_spec, mix.size(-1))
             
+            loss = criterion(pred_vocals, pred_vocals_spec, vocals, vocals_spec) + criterion(pred_bg, pred_bg_spec, bg, bg_spec)
+
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
+            total_loss += loss.item()
+
+            print(f'Epoch {epoch+1}, Loss: {total_loss / len(dataloader)}')
+            torch.save(model.state_dict(), f'checkpoints/model_epoch_{epoch+1}.pth')
 
 
 if __name__ == '__main__':
@@ -81,6 +94,7 @@ if __name__ == '__main__':
 
     model = DTTNet(in_channels=2, num_sources=2, fft_bins=2048)
     optim = optim.Adam(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.5, patience=7)
     criterion = TimeFreqDomainLoss(alpha=0.5)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dataset = MUSDBDataset()
