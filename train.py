@@ -6,13 +6,11 @@ from utils.audio_utils import load_musdb
 from utils.loss import TimeFreqDomainLoss
 import os
 from torch.utils.data import DataLoader, Dataset
+from datasets import load_dataset
 
 class MUSDBDataset(Dataset):
-    def __init__(self, root_dir, sample_rate=44100, segment_len = 44100*4):
-        self.root_dir = root_dir
-        for d in os.listdir(root_dir):
-            if os.path.isdir(os.path.join(root_dir, d)):
-                self.tracks = [os.path.join(root_dir, d)] 
+    def __init__(self, split='train', sample_rate=44100, segment_len = 44100*4):
+        self.dataset = load_dataset('danjacobellis/musdb18HQ', split=split)
         
         self.sample_rate = sample_rate
         self.segment_len = segment_len
@@ -21,12 +19,16 @@ class MUSDBDataset(Dataset):
         return len(self.tracks) * 10
     
     def __getitem__(self, idx):
-        track_path = self.tracks[idx // 10]
-        mix, vocals, bg = load_musdb(track_path, self.sample_rate)
+        track_idx = idx // 10
+        track = self.dataset[track_idx]
+
+        mix, vocals, bg = load_musdb(track, self.sample_rate)
+
         start = torch.randint(0, mix.size(-1) - self.segment_length, (1,)).item()
         mix = mix[:, start:start+self.segment_length]
         vocals = vocals[:, start:start+self.segment_length]
         bg = bg[:, start:start+self.segment_length]
+        
         return mix, vocals, bg
 
 def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
