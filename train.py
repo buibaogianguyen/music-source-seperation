@@ -12,6 +12,7 @@ import torchaudio
 class MUSDBDataset(Dataset):
     def __init__(self, split='train', sample_rate=44100, segment_len = 44100*4):
         self.dataset = load_dataset('danjacobellis/musdb18HQ', split=split)
+        self.tracks = self.dataset
         
         self.sample_rate = sample_rate
         self.segment_len = segment_len
@@ -23,40 +24,20 @@ class MUSDBDataset(Dataset):
         track_idx = idx // 10
         track = self.dataset[track_idx]
 
-        mix, vocals, bg = load_musdb(track)
+        mix, vocals, bg = load_musdb(track, segment_len=self.segment_len)
 
-        start = torch.randint(0, mix.size(-1) - self.segment_length, (1,)).item()
-        mix = mix[:, start:start+self.segment_length]
-        vocals = vocals[:, start:start+self.segment_length]
-        bg = bg[:, start:start+self.segment_length]
+        if mix.size(-1) < self.segment_len:
+                print(f"Track {track_idx} too short: {mix.size(-1)} samples")
+                return None
+
+        start = torch.randint(0, mix.size(-1) - self.segment_len, (1,)).item()
+        mix = mix[:, start:start+self.segment_len]
+        vocals = vocals[:, start:start+self.segment_len]
+        bg = bg[:, start:start+self.segment_len]
 
         return mix, vocals, bg
     
-    def load_musdb(self, track):
-        try:
-            mix_path = track.get('mixture')
-            vocals_path = track.get('vocals')
-            bg_path = track.get('accompaniment')
-
-            if not all([mix_path, vocals_path, bg_path]):
-                raise ValueError("Missing audio file paths in dataset")
-
-            mix, sr = torchaudio.load(mix_path)
-            vocals, sr_v = torchaudio.load(vocals_path)
-            bg, sr_b = torchaudio.load(bg_path)
-
-            if sr != self.sample_rate:
-                resampler = torchaudio.transforms.Resample(sr, self.sample_rate)
-                mix = resampler(mix)
-                vocals = resampler(vocals)
-                bg = resampler(bg)
-
-            return mix, vocals, bg
-        except Exception as e:
-            print(f"Error loading track: {e}")
-            # Dummy tensors to avoid crash
-            dummy = torch.zeros(2, self.segment_len)
-            return dummy, dummy, dummy
+    
 
 def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
     for epoch in range(epochs):
@@ -83,8 +64,10 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
             loss.backward()
             optim.step()
             total_loss += loss.item()
+            avg_loss = total_loss/len(dataloader)
 
-            print(f'Epoch {epoch+1}, Loss: {total_loss / len(dataloader)}')
+            print(f'Epoch {epoch+1}, Loss: {avg_loss}')
+            scheduler.step(avg_loss)
             torch.save(model.state_dict(), f'checkpoints/model_epoch_{epoch+1}.pth')
 
 
