@@ -15,7 +15,8 @@ class Preprocessor:
             n_fft=self.fft_bins,
             hop_length=self.hop_len,
             win_length=self.windows,
-            return_complex=True
+            return_complex=True,
+            window=self.windows
         )
         return spec
     
@@ -24,7 +25,8 @@ class Preprocessor:
             input=spec,
             n_fft=self.fft_bins,
             hop_length=self.hop_len,
-            win_length=self.windows,
+            win_length=self.fft_bins,
+            window=self.windows,
             length=length
         )
 
