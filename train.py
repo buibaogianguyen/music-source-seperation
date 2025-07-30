@@ -26,7 +26,7 @@ class MUSDBDataset(Dataset):
         self.song_names = list(self.songs.keys())
 
     def __len__(self):
-        return len(self.tracks) * 10
+        return len(self.tracks)
     
     def __getitem__(self, idx):
         song_idx = idx // 10
@@ -34,14 +34,17 @@ class MUSDBDataset(Dataset):
         stems = self.songs[song_name]
 
         stem_tensors = []
-        for stem_audio in stems.values():
-            if isinstance(stem_audio, dict) and 'array' in stem_audio:
-                stem_tensors.append(torch.tensor(stem_audio['array']).float())
-            else:
-                stem_tensors.append(torch.tensor(stem_audio).float())
-        mixture = sum(stem_tensors)
 
-        vocals = torch.tensor(stems['vocals']['array']).float() if isinstance(stems['vocals'], dict) else torch.tensor(stems['vocals']).float()
+        for stem_audio in stems.values():
+            if isinstance(stem_audio, dict):
+                stem_audio = stem_audio['array']
+            stem_tensors.append(torch.tensor(stem_audio).float())
+
+        vocals_audio = stems['vocals']
+        if isinstance(vocals_audio, dict):
+            vocals_audio = vocals_audio['array']
+        vocals = torch.tensor(vocals_audio).float()
+        
         accompaniment = mixture - vocals
 
         if mixture.ndim == 1:
