@@ -13,27 +13,22 @@ def save_audio(file_path, waveform, sample_rate=44100):
     torchaudio.save(file_path, waveform, sample_rate)
 
 def load_musdb(track, segment_len, sample_rate=44100):
-    try:
-        mix_path = track.get('mixture')
-        vocals_path = track.get('vocals')
-        bg_path = track.get('accompaniment')
+    mix = load_audio(track['mixture'], sample_rate)
+    vocals = load_audio(track['vocals'], sample_rate)
+    bg = load_audio(track['accompaniment'], sample_rate)
 
-        if not all([mix_path, vocals_path, bg_path]):
-            raise ValueError("Missing audio file paths in dataset")
+    if mix.ndim == 1:
+        mix = mix.unsqueeze(0)
+    if vocals.ndim == 1:
+        vocals = vocals.unsqueeze(0)
+    if bg.ndim == 1:
+        bg = bg.unsqueeze(0)
 
-        mix, sr = torchaudio.load(mix_path)
-        vocals, sr_v = torchaudio.load(vocals_path)
-        bg, sr_b = torchaudio.load(bg_path)
+    if mix.size(-1) < segment_len:
+        raise ValueError(f"Track too short, {mix.size(-1)} samples")
+    start = torch.randint(0, mix.size(-1) - segment_len, (1,)).item()
+    mix = mix[:, start:start+segment_len]
+    vocals = vocals[:, start:start+segment_len]
+    bg = bg[:, start:start+segment_len]
 
-        if sr != sample_rate:
-            resampler = torchaudio.transforms.Resample(sr, sample_rate)
-            mix = resampler(mix)
-            vocals = resampler(vocals)
-            bg = resampler(bg)
-
-        return mix, vocals, bg
-    except Exception as e:
-        print(f"Error loading track: {e}")
-        # Dummy tensors to avoid crash
-        dummy = torch.zeros(2, segment_len)
-        return dummy, dummy, dummy
+    return mix, vocals, bg

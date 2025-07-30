@@ -9,63 +9,43 @@ from torch.utils.data import DataLoader, Dataset
 from datasets import load_dataset
 import torchaudio
 from collections import defaultdict
+import numpy as np
 
 class MUSDBDataset(Dataset):
-    def __init__(self, split='train', sample_rate=44100, segment_len = 44100*4):
-        self.dataset = load_dataset('danjacobellis/musdb18HQ', split=split)
-        self.tracks = self.dataset
-        
+    def __init__(self, root, split='train', sample_rate=44100, segment_len = 44100*4):
         self.sample_rate = sample_rate
         self.segment_len = segment_len
+        self.tracks = []
+        self.stems = ['mixture', 'vocals', 'accompaniment']
 
-        self.songs = defaultdict(dict)
-        for entry in self.dataset:
-            song_name = entry['path'].split('/')[-2]
-            self.songs[song_name][entry['instrument']] = entry['audio']
+        split_file = os.path.join(root, f'{split}.txt')
+        if os.path.exists(split_file):
+            with open(split_file, 'r') as f:
+                song_names = [line.strip() for line in f if line.strip()]
+        else:
+            song_names = [d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))]
 
-        self.song_names = list(self.songs.keys())
+        for song in song_names:
+            song_path = os.path.join(root, song)
+            if not os.path.isdir(song_path):
+                continue
+            track = {}
+            for stem in self.stems:
+                stem_path = os.path.join(song_path, f"{stem}.wav")
+                if os.path.exists(stem_path):
+                    track[stem] = stem_path
+            if len(track) == len(self.stems):
+                self.tracks.append(track)
 
     def __len__(self):
         return len(self.tracks)
     
     def __getitem__(self, idx):
-        song_idx = idx // 10
-        song_name = self.song_names[song_idx]
-        stems = self.songs[song_name]
-
-        stem_tensors = []
-
-        for stem_audio in stems.values():
-            if isinstance(stem_audio, dict):
-                stem_audio = stem_audio['array']
-            stem_tensors.append(torch.tensor(stem_audio).float())
-
-        vocals_audio = stems['vocals']
-        if isinstance(vocals_audio, dict):
-            vocals_audio = vocals_audio['array']
-        vocals = torch.tensor(vocals_audio).float()
+        track = self.tracks[idx]
         
-        accompaniment = mixture - vocals
-
-        if mixture.ndim == 1:
-            mixture = mixture.unsqueeze(0)
-        if vocals.ndim == 1:
-            vocals = vocals.unsqueeze(0)
-        if accompaniment.ndim == 1:
-            accompaniment = accompaniment.unsqueeze(0)
-
-        if mixture.size(-1) < self.segment_len:
-            print(f"Track {song_name} too short: {mixture.size(-1)} samples")
-            return None
-
-        start = torch.randint(0, mixture.size(-1) - self.segment_len, (1,)).item()
-        mixture = mixture[:, start:start+self.segment_len]
-        vocals = vocals[:, start:start+self.segment_len]
-        accompaniment = accompaniment[:, start:start+self.segment_len]
+        mixture, vocals, accompaniment = load_musdb(track, self.segment_len, self.sample_rate)
 
         return mixture, vocals, accompaniment
-    
-    
 
 def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
     for epoch in range(epochs):
@@ -102,13 +82,14 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
 if __name__ == '__main__':
     lr = 0.001
     epochs = 100
+    root = ''
 
     model = DTTNet(in_channels=2, num_sources=2, fft_bins=2048)
     optim = optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.5, patience=7)
     criterion = TimeFreqDomainLoss(alpha=0.5)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    dataset = MUSDBDataset()
+    dataset = MUSDBDataset(root=root)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
     preprocessor = Preprocessor(fft_bins=2048, hop_len=512, sample_rate=44100)
 
