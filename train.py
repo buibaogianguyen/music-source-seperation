@@ -8,6 +8,7 @@ import os
 from torch.utils.data import DataLoader, Dataset
 from datasets import load_dataset
 import torchaudio
+from collections import defaultdict
 
 class MUSDBDataset(Dataset):
     def __init__(self, split='train', sample_rate=44100, segment_len = 44100*4):
@@ -17,25 +18,49 @@ class MUSDBDataset(Dataset):
         self.sample_rate = sample_rate
         self.segment_len = segment_len
 
+        self.songs = defaultdict(dict)
+        for entry in self.dataset:
+            song_name = entry['path'].split('/')[-2]
+            self.songs[song_name][entry['instrument']] = entry['audio']
+
+        self.song_names = list(self.songs.keys())
+
     def __len__(self):
         return len(self.tracks) * 10
     
     def __getitem__(self, idx):
-        track_idx = idx // 10
-        track = self.dataset[track_idx]
+        song_idx = idx // 10
+        song_name = self.song_names[song_idx]
+        stems = self.songs[song_name]
 
-        mix, vocals, bg = load_musdb(track, segment_len=self.segment_len)
+        stem_tensors = []
+        for stem_audio in stems.values():
+            if isinstance(stem_audio, dict) and 'array' in stem_audio:
+                stem_tensors.append(torch.tensor(stem_audio['array']).float())
+            else:
+                stem_tensors.append(torch.tensor(stem_audio).float())
+        mixture = sum(stem_tensors)
 
-        if mix.size(-1) < self.segment_len:
-                print(f"Track {track_idx} too short: {mix.size(-1)} samples")
-                return None
+        vocals = torch.tensor(stems['vocals']['array']).float() if isinstance(stems['vocals'], dict) else torch.tensor(stems['vocals']).float()
+        accompaniment = mixture - vocals
 
-        start = torch.randint(0, mix.size(-1) - self.segment_len, (1,)).item()
-        mix = mix[:, start:start+self.segment_len]
+        if mixture.ndim == 1:
+            mixture = mixture.unsqueeze(0)
+        if vocals.ndim == 1:
+            vocals = vocals.unsqueeze(0)
+        if accompaniment.ndim == 1:
+            accompaniment = accompaniment.unsqueeze(0)
+
+        if mixture.size(-1) < self.segment_len:
+            print(f"Track {song_name} too short: {mixture.size(-1)} samples")
+            return None
+
+        start = torch.randint(0, mixture.size(-1) - self.segment_len, (1,)).item()
+        mixture = mixture[:, start:start+self.segment_len]
         vocals = vocals[:, start:start+self.segment_len]
-        bg = bg[:, start:start+self.segment_len]
+        accompaniment = accompaniment[:, start:start+self.segment_len]
 
-        return mix, vocals, bg
+        return mixture, vocals, accompaniment
     
     
 
