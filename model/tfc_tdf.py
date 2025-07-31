@@ -16,11 +16,12 @@ class TFCTDFBlock(nn.Module):
         self.relu = nn.ReLU()
         self.tdf = nn.Linear(out_channels, min_bn_units)
         self.tdf_bn = nn.BatchNorm1d(min_bn_units)
+        self.tdf_out = nn.Linear(min_bn_units, out_channels)
 
         if in_channels != out_channels:
             self.residual = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         else:
-            self.resitual = nn.Identity()
+            self.residual = nn.Identity()
 
     def forward(self, x):
         # x shape: (batch, channels, freq, time)
@@ -33,6 +34,8 @@ class TFCTDFBlock(nn.Module):
         x = self.tdf(x)
         x = self.tdf_bn(x.permute(0,2,1))
         x = self.relu(x)
+        x = x.permute(0,2,1)
+        x = self.tdf_out(x)
         x = x.reshape(b,f,t,-1).permute(0,3,1,2)
         return x + residual
 

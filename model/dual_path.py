@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class DualPathModule(nn.Module):
-    def __init__(self, channels, hidden_dim=64):
+    def __init__(self, channels, hidden_dim=256):
         super(DualPathModule, self).__init__()
 
         # time
