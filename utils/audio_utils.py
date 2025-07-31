@@ -3,6 +3,8 @@ import torch
 import os
 
 def load_musdb(track, segment_len, sample_rate=44100):
+    print("Loading:", track['mixture'])
+    print(torchaudio.get_audio_backend())
     mix, mix_sr = torchaudio.load(track['mixture'])
     vocals, vocals_sr = torchaudio.load(track['vocals'])
     drums, drums_sr = torchaudio.load(track['drums'])

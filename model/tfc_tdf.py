@@ -13,14 +13,14 @@ class TFCTDFBlock(nn.Module):
             )
         
         self.bn = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU
+        self.relu = nn.ReLU()
         self.tdf = nn.Linear(out_channels, min_bn_units)
         self.tdf_bn = nn.BatchNorm1d(min_bn_units)
 
         if in_channels != out_channels:
             self.residual = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         else:
-            nn.Identity()
+            self.resitual = nn.Identity()
 
     def forward(self, x):
         # x shape: (batch, channels, freq, time)

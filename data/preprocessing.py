@@ -10,23 +10,29 @@ class Preprocessor:
         self.windows = torch.hann_window(fft_bins)
 
     def waveform_to_spectrogram(self, waveform):
+        original_shape = waveform.shape
+        batch, channels, time = original_shape
+        waveform = waveform.reshape(batch*channels, time)
+        window = self.windows.to(waveform.device)
         spec = torch.stft(
             input=waveform,
             n_fft=self.fft_bins,
             hop_length=self.hop_len,
-            win_length=self.windows,
+            win_length=self.fft_bins,
             return_complex=True,
-            window=self.windows
+            window=window,
         )
+        spec = spec.reshape(batch, channels, spec.shape[-2], spec.shape[-1])
         return spec
     
     def spectrogram_to_waveform(self, spec, length=None):
+        window = self.windows.to(spec.device)
         waveform = torch.istft(
             input=spec,
             n_fft=self.fft_bins,
             hop_length=self.hop_len,
             win_length=self.fft_bins,
-            window=self.windows,
+            window=window,
             length=length
         )
 

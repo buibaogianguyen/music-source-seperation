@@ -8,7 +8,6 @@ import os
 from torch.utils.data import DataLoader, Dataset
 from datasets import load_dataset
 import torchaudio
-from collections import defaultdict
 import numpy as np
 import kagglehub
 
@@ -17,13 +16,13 @@ class MUSDBDataset(Dataset):
         self.sample_rate = sample_rate
         self.segment_len = segment_len
         self.tracks = []
-        self.stems = ['mixture', 'vocals', 'accompaniment']
+        self.stems = ['mixture', 'vocals', 'drums', 'bass', 'other']
 
         split_dir = os.path.join(root, split)
         song_names = [d for d in os.listdir(split_dir) if os.path.isdir(os.path.join(split_dir, d))]
 
         for song in song_names:
-            song_path = os.path.join(root, song)
+            song_path = os.path.join(split_dir, song)
             track = {}
             for stem in self.stems:
                 stem_path = os.path.join(song_path, f"{stem}.wav")
@@ -38,9 +37,9 @@ class MUSDBDataset(Dataset):
     def __getitem__(self, idx):
         track = self.tracks[idx]
         
-        mixture, vocals, accompaniment = load_musdb(track, self.segment_len, self.sample_rate)
+        mixture, vocals, bg = load_musdb(track, self.segment_len, self.sample_rate)
 
-        return mixture, vocals, accompaniment
+        return mixture, vocals, bg
 
 def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
     for epoch in range(epochs):
@@ -79,11 +78,12 @@ if __name__ == '__main__':
     epochs = 100
     root = kagglehub.dataset_download("quanglvitlm/musdb18-hq")
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = DTTNet(in_channels=2, num_sources=2, fft_bins=2048)
+    model = model.to(device)
     optim = optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.5, patience=7)
     criterion = TimeFreqDomainLoss(alpha=0.5)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dataset = MUSDBDataset(root=root)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
     preprocessor = Preprocessor(fft_bins=2048, hop_len=512, sample_rate=44100)
