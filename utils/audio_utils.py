@@ -9,8 +9,6 @@ def load_musdb(track, segment_len, sample_rate=44100):
     bass, bass_sr = torchaudio.load(track['bass'])
     other, other_sr = torchaudio.load(track['other'])
 
-    bg = drums + bass + other
-
     if mix_sr != sample_rate:
         mix = torchaudio.transforms.Resample(mix_sr, sample_rate)(mix)
     if vocals_sr != sample_rate:
@@ -21,6 +19,8 @@ def load_musdb(track, segment_len, sample_rate=44100):
         drums = torchaudio.transforms.Resample(drums_sr, sample_rate)(drums)
     if other_sr != sample_rate:
         other = torchaudio.transforms.Resample(other_sr, sample_rate)(other)
+
+    bg = drums + bass + other
 
     if mix.ndim == 1:
         mix = mix.unsqueeze(0)
