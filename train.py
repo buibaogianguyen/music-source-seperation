@@ -10,6 +10,7 @@ from datasets import load_dataset
 import torchaudio
 from collections import defaultdict
 import numpy as np
+import kagglehub
 
 class MUSDBDataset(Dataset):
     def __init__(self, root, split='train', sample_rate=44100, segment_len = 44100*4):
@@ -82,7 +83,7 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
 if __name__ == '__main__':
     lr = 0.001
     epochs = 100
-    root = ''
+    root = kagglehub.dataset_download("quanglvitlm/musdb18-hq")
 
     model = DTTNet(in_channels=2, num_sources=2, fft_bins=2048)
     optim = optim.Adam(model.parameters(), lr=lr)
