@@ -2,20 +2,25 @@ import torchaudio
 import torch
 import os
 
-def load_audio(file_path, sample_rate=44100):
-    waveform, samp_rate = torchaudio.load(file_path)
-    if samp_rate != sample_rate:
-        waveform = torchaudio.transforms.Resample(samp_rate, sample_rate)(waveform)
-
-    return waveform
-
-def save_audio(file_path, waveform, sample_rate=44100):
-    torchaudio.save(file_path, waveform, sample_rate)
-
 def load_musdb(track, segment_len, sample_rate=44100):
-    mix = load_audio(track['mixture'], sample_rate)
-    vocals = load_audio(track['vocals'], sample_rate)
-    bg = load_audio(track['accompaniment'], sample_rate)
+    mix, mix_sr = torchaudio.load(track['mixture'])
+    vocals, vocals_sr = torchaudio.load(track['vocals'])
+    drums, drums_sr = torchaudio.load(track['drums'])
+    bass, bass_sr = torchaudio.load(track['bass'])
+    other, other_sr = torchaudio.load(track['other'])
+
+    bg = drums + bass + other
+
+    if mix_sr != sample_rate:
+        mix = torchaudio.transforms.Resample(mix_sr, sample_rate)(mix)
+    if vocals_sr != sample_rate:
+        vocals = torchaudio.transforms.Resample(vocals_sr, sample_rate)(vocals)
+    if bass_sr != sample_rate:
+        bass = torchaudio.transforms.Resample(bass_sr, sample_rate)(bass)
+    if drums_sr != sample_rate:
+        drums = torchaudio.transforms.Resample(drums_sr, sample_rate)(drums)
+    if other_sr != sample_rate:
+        other = torchaudio.transforms.Resample(other_sr, sample_rate)(other)
 
     if mix.ndim == 1:
         mix = mix.unsqueeze(0)

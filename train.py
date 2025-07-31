@@ -19,17 +19,11 @@ class MUSDBDataset(Dataset):
         self.tracks = []
         self.stems = ['mixture', 'vocals', 'accompaniment']
 
-        split_file = os.path.join(root, f'{split}.txt')
-        if os.path.exists(split_file):
-            with open(split_file, 'r') as f:
-                song_names = [line.strip() for line in f if line.strip()]
-        else:
-            song_names = [d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))]
+        split_dir = os.path.join(root, split)
+        song_names = [d for d in os.listdir(split_dir) if os.path.isdir(os.path.join(split_dir, d))]
 
         for song in song_names:
             song_path = os.path.join(root, song)
-            if not os.path.isdir(song_path):
-                continue
             track = {}
             for stem in self.stems:
                 stem_path = os.path.join(song_path, f"{stem}.wav")
