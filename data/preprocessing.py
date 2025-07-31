@@ -33,7 +33,8 @@ class Preprocessor:
             hop_length=self.hop_len,
             win_length=self.fft_bins,
             window=window,
-            length=length
+            length=length,
+            return_complex=False
         )
 
         return waveform

@@ -21,7 +21,7 @@ class DTTNet(nn.Module):
             TFCTDFBlock(256 + 256, 128), # account for skip connection 
             TFCTDFBlock(128 + 128, 64),
             TFCTDFBlock(64+64, 32),
-            TFCTDFBlock(32+32, 16)
+            TFCTDFBlock(32+32, 32)
         ])
 
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
