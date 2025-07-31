@@ -31,7 +31,7 @@ class TFCTDFBlock(nn.Module):
         b, c, f, t = x.shape
         x = x.permute(0, 2, 3, 1).reshape(b*f,t,c)
         x = self.tdf(x)
-        x = self.tdf(x.permute(0,2,1)).permute(0,2,1)
+        x = self.tdf_bn(x.permute(0,2,1))
         x = self.relu(x)
         x = x.reshape(b,f,t,-1).permute(0,3,1,2)
         return x + residual
