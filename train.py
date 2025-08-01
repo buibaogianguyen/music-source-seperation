@@ -53,12 +53,19 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
             bg_spec = preprocessor.waveform_to_spectrogram(bg)
 
             mix_mag = preprocessor.normalize_spectrogram(mix_spec)
+
             masks = model(mix_mag)
 
             pred_vocals_spec = masks[:, :, 0, :, :]
             pred_bg_spec = masks[:, :, 1, :, :]
-            pred_vocals = preprocessor.spectrogram_to_waveform(pred_vocals_spec, mix.size(-1))
-            pred_bg = preprocessor.spectrogram_to_waveform(pred_bg_spec, mix.size(-1))
+
+            mix_phase = preprocessor.get_phase(mix_spec)
+
+            pred_vocals_complex = pred_vocals_spec * torch.exp(1j * mix_phase)
+            pred_bg_complex = pred_bg_spec * torch.exp(1j * mix_phase)
+
+            pred_vocals = preprocessor.spectrogram_to_waveform(pred_vocals_complex, mix.size(-1))
+            pred_bg = preprocessor.spectrogram_to_waveform(pred_bg_complex, mix.size(-1))
             
             loss = criterion(pred_vocals, pred_vocals_spec, vocals, vocals_spec) + criterion(pred_bg, pred_bg_spec, bg, bg_spec)
 
