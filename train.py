@@ -73,11 +73,11 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
             loss.backward()
             optim.step()
             total_loss += loss.item()
-            avg_loss = total_loss/len(dataloader)
-
-            print(f'Epoch {epoch+1}, Loss: {avg_loss}')
-            scheduler.step(avg_loss)
-            torch.save(model.state_dict(), f'checkpoints/model_epoch_{epoch+1}.pth')
+            
+        avg_loss = total_loss/len(dataloader)
+        print(f'Epoch {epoch+1}, Loss: {avg_loss}')
+        scheduler.step(avg_loss)
+        torch.save(model.state_dict(), f'checkpoints/model_epoch_{epoch+1}.pth')
 
 
 if __name__ == '__main__':
