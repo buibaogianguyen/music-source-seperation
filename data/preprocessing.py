@@ -26,6 +26,8 @@ class Preprocessor:
         return spec
     
     def spectrogram_to_waveform(self, spec, length=None):
+        b, c, f, t = spec.shape
+        spec = spec.reshape(b*c,f,t)
         window = self.windows.to(spec.device)
         waveform = torch.istft(
             input=spec,
@@ -37,6 +39,7 @@ class Preprocessor:
             return_complex=False
         )
 
+        waveform = waveform.reshape(b, c, -1)
         return waveform
     
     def normalize_spectrogram(self, spec):
