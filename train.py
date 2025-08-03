@@ -10,6 +10,7 @@ from datasets import load_dataset
 import torchaudio
 import numpy as np
 import kagglehub
+from asteroid.metrics import get_metrics
 
 class MUSDBDataset(Dataset):
     def __init__(self, root, split='train', sample_rate=44100, segment_len = 44100*4):
@@ -76,6 +77,10 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor):
             
         avg_loss = total_loss/len(dataloader)
         print(f'Epoch {epoch+1}, Loss: {avg_loss}')
+
+        metrics = get_metrics(pred_signal=pred_waveform, target_signal=target_waveform, sample_rate=44100, metrics_list=["si_snr"])
+
+        print("SI-SNR:", metrics["si_snr"])
         scheduler.step(avg_loss)
         torch.save(model.state_dict(), f'checkpoints/model_epoch_{epoch+1}.pth')
 
