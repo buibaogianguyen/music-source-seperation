@@ -12,9 +12,10 @@ import numpy as np
 import kagglehub
 
 class MUSDBDataset(Dataset):
-    def __init__(self, root, split='train', sample_rate=44100, segment_len = 44100*4):
+    def __init__(self, root, split='train', sample_rate=44100, segment_len = 44100*4, augment=True):
         self.sample_rate = sample_rate
         self.segment_len = segment_len
+        self.augment = augment
         self.tracks = []
         self.stems = ['mixture', 'vocals', 'drums', 'bass', 'other']
         self.gain = torchaudio.transforms.Vol(gain=0.5, gain_type='amplitude')
@@ -40,23 +41,34 @@ class MUSDBDataset(Dataset):
         track = self.tracks[idx]
         
         mixture, vocals, bg = load_musdb(track, self.segment_len, self.sample_rate)
-        if np.random.rand() < 0.3:
-            mixture = self.gain(mixture).detach()
-            vocals = self.gain(vocals).detach()
-            bg = self.gain(bg).detach()
+        if self.augment == True:
+            if np.random.rand() < 0.3:
+                mixture = self.gain(mixture).detach()
+                vocals = self.gain(vocals).detach()
+                bg = self.gain(bg).detach()
 
-        if np.random.rand() < 0.2:
-            mixture = self.pitch_shift(mixture).detach()
-            vocals = self.pitch_shift(vocals).detach()
-            bg = self.pitch_shift(bg).detach()
+            if np.random.rand() < 0.2:
+                mixture = self.pitch_shift(mixture).detach()
+                vocals = self.pitch_shift(vocals).detach()
+                bg = self.pitch_shift(bg).detach()
+            
+            if np.random.rand() < 0.3:
+                mixture = self.add_noise(mixture)
+                vocals = self.add_noise(vocals)
+                bg = self.add_noise(bg)
+
 
         return mixture, vocals, bg
+    
+    def add_noise(self, waveform, noise_level=0.005):
+        noise = torch.randn_like(waveform) * noise_level
+        return waveform + noise
 
-def validate(model, criterion, device, dataloader, preprocessor):
+def validate(model, criterion, device, dataloader, preprocessor, val_loader):
     model.eval()
     total_loss = 0.0
     with torch.no_grad():
-        for mix, vocals, bg in dataloader:
+        for mix, vocals, bg in val_loader:
             mix, vocals, bg = mix.to(device), vocals.to(device), bg.to(device)
             mix_spec = preprocessor.waveform_to_spectrogram(mix)
             vocals_spec = preprocessor.waveform_to_spectrogram(vocals)
@@ -74,13 +86,13 @@ def validate(model, criterion, device, dataloader, preprocessor):
             total_loss += loss.item()
     return total_loss / len(dataloader)
 
-def train(model, optim, criterion, epochs, device, dataloader, preprocessor, train_loader, val_loader):
+def train(model, optim, criterion, epochs, device, dataloader, preprocessor, train_loader, val_loader, scheduler):
+    best_loss = float('inf')
     for epoch in range(epochs):
-        best_loss = float('inf')
         total_loss = 0.0
         model.train()
 
-        for mix, vocals, bg in dataloader:
+        for mix, vocals, bg in train_loader:
             mix, vocals, bg = mix.to(device), vocals.to(device), bg.to(device)
             mix_spec = preprocessor.waveform_to_spectrogram(mix)
             vocals_spec = preprocessor.waveform_to_spectrogram(vocals)
@@ -110,12 +122,12 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor, tra
             total_loss += loss.item()
 
         avg_loss = total_loss / len(train_loader)
-        val_loss = validate(model, criterion, device, val_loader, preprocessor)
+        val_loss = validate(model, criterion, device, val_loader, preprocessor, val_loader)
         print(f'Epoch {epoch+1}, Train Loss: {avg_loss}, Val Loss: {val_loss}')
         if val_loss < best_loss:
             best_loss = val_loss
-            print('Saved new best model')
             torch.save(model.state_dict(), 'best_model.pth')
+            print('Saved new best model')
         scheduler.step(val_loss)
 
 
@@ -127,16 +139,16 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = DTTNet(in_channels=2, num_sources=2, fft_bins=1024)
     model = model.to(device)
-    optim = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.5, patience=3, min_lr=1e-6)
+    optim = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.7, patience=2, min_lr=1e-6)
     criterion = TimeFreqDomainLoss(alpha=0.5)
     dataset = MUSDBDataset(root=root)
     dataloader = DataLoader(dataset, batch_size=12, shuffle=True)
     preprocessor = Preprocessor(fft_bins=1024, hop_len=256, sample_rate=44100)
-    train_dataset = MUSDBDataset(root=root)
-    val_dataset = MUSDBDataset(root=root, split='valid')
+    train_dataset = MUSDBDataset(root=root, split='train', augment=True)
+    val_dataset = MUSDBDataset(root=root, split='valid', augment=False)
     train_loader = DataLoader(train_dataset, batch_size=12, shuffle=True, num_workers=8)
     val_loader = DataLoader(val_dataset, batch_size=12, shuffle=False, num_workers=8)
 
-    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader, preprocessor=preprocessor, train_loader=train_loader, val_loader=val_loader)
+    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader, preprocessor=preprocessor, train_loader=train_loader, val_loader=val_loader, scheduler=scheduler)
 
