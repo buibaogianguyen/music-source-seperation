@@ -123,12 +123,12 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.2, patience=5)
     criterion = TimeFreqDomainLoss(alpha=0.5)
     dataset = MUSDBDataset(root=root)
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
     preprocessor = Preprocessor(fft_bins=2048, hop_len=512, sample_rate=44100)
     train_dataset = MUSDBDataset(root=root)
     val_dataset = MUSDBDataset(root=root, split='valid')
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
 
     train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader, preprocessor=preprocessor, train_loader=train_loader, val_loader=val_loader)
 
