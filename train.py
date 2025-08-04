@@ -40,10 +40,16 @@ class MUSDBDataset(Dataset):
         track = self.tracks[idx]
         
         mixture, vocals, bg = load_musdb(track, self.segment_len, self.sample_rate)
-        if np.random.rand() < 0.5:
-            mixture = self.gain(mixture)
-            vocals = self.gain(vocals)
-            bg = self.gain(bg)
+        if np.random.rand() < 0.3:
+            mixture = self.gain(mixture).detach()
+            vocals = self.gain(vocals).detach()
+            bg = self.gain(bg).detach()
+
+        if np.random.rand() < 0.2:
+            mixture = self.pitch_shift(mixture).detach()
+            vocals = self.pitch_shift(vocals).detach()
+            bg = self.pitch_shift(bg).detach()
+
         return mixture, vocals, bg
 
 def validate(model, criterion, device, dataloader, preprocessor):
@@ -98,6 +104,7 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor, tra
             loss = criterion(pred_vocals, pred_vocals_spec, vocals, vocals_spec) + criterion(pred_bg, pred_bg_spec, bg, bg_spec)
 
             optim.zero_grad()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             loss.backward()
             optim.step()
             total_loss += loss.item()
@@ -107,6 +114,7 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor, tra
         print(f'Epoch {epoch+1}, Train Loss: {avg_loss}, Val Loss: {val_loss}')
         if val_loss < best_loss:
             best_loss = val_loss
+            print('Saved new best model')
             torch.save(model.state_dict(), 'best_model.pth')
         scheduler.step(val_loss)
 
@@ -117,18 +125,18 @@ if __name__ == '__main__':
     root = kagglehub.dataset_download("quanglvitlm/musdb18-hq")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = DTTNet(in_channels=2, num_sources=2, fft_bins=2048)
+    model = DTTNet(in_channels=2, num_sources=2, fft_bins=1024)
     model = model.to(device)
-    optim = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.2, patience=5)
+    optim = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.5, patience=3, min_lr=1e-6)
     criterion = TimeFreqDomainLoss(alpha=0.5)
     dataset = MUSDBDataset(root=root)
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
-    preprocessor = Preprocessor(fft_bins=2048, hop_len=512, sample_rate=44100)
+    dataloader = DataLoader(dataset, batch_size=12, shuffle=True)
+    preprocessor = Preprocessor(fft_bins=1024, hop_len=256, sample_rate=44100)
     train_dataset = MUSDBDataset(root=root)
     val_dataset = MUSDBDataset(root=root, split='valid')
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=12, shuffle=True, num_workers=8)
+    val_loader = DataLoader(val_dataset, batch_size=12, shuffle=False, num_workers=8)
 
     train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader, preprocessor=preprocessor, train_loader=train_loader, val_loader=val_loader)
 
