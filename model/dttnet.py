@@ -6,27 +6,30 @@ from .dual_path import DualPathModule
 
 class DTTNet(nn.Module):
     def __init__(self, in_channels, num_sources, fft_bins):
-        super(DTTNet,self).__init__()
+        super(DTTNet, self).__init__()
         self.encoder = nn.ModuleList([
-            TFCTDFBlock(in_channels, 16),
-            TFCTDFBlock(16,32),
-            TFCTDFBlock(32,64),
-            TFCTDFBlock(64,128)
+            TFCTDFBlock(in_channels, 32),
+            TFCTDFBlock(32, 64),
+            TFCTDFBlock(64, 128),
+            TFCTDFBlock(128, 256),
+            TFCTDFBlock(256, 256)
         ])
-
         self.downsample = nn.MaxPool2d(kernel_size=2, ceil_mode=True)
-        self.dual_path = DualPathModule(channels=128)
-
+        self.dual_path = nn.Sequential(
+            DualPathModule(channels=256, hidden_dim=512),
+            DualPathModule(channels=256, hidden_dim=512)
+        )
         self.decoder = nn.ModuleList([
-            TFCTDFBlock(128+128, 64), # account for skip connection 
-            TFCTDFBlock(64+64, 32),
-            TFCTDFBlock(32+32, 16),
-            TFCTDFBlock(16+16, 16)
+            TFCTDFBlock(256 + 256, 256),
+            TFCTDFBlock(256 + 256, 128),
+            TFCTDFBlock(128 + 128, 64),
+            TFCTDFBlock(64 + 64, 32),
+            TFCTDFBlock(32 + 32, 32)
         ])
 
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         self.out_conv = nn.Conv2d(16,num_sources*in_channels, kernel_size=1)
-        self.sigmoid = nn.Sigmoid()
+        self.softplus = nn.Softplus(beta=1)
     
     def forward(self,x):
         skips = []
