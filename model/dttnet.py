@@ -28,7 +28,7 @@ class DTTNet(nn.Module):
         ])
 
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        self.out_conv = nn.Conv2d(16,num_sources*in_channels, kernel_size=1)
+        self.out_conv = nn.Conv2d(32,num_sources*in_channels, kernel_size=1)
         self.softplus = nn.Softplus(beta=1)
     
     def forward(self,x):
@@ -55,7 +55,7 @@ class DTTNet(nn.Module):
             x = layer(x)
 
         masks = self.out_conv(x)
-        masks = self.sigmoid(masks)
+        masks = self.softplus(masks)
 
         masks = masks.view(masks.size(0), -1, 2, masks.size(2), masks.size(3)) # (b,c,s,f,t)
         return masks

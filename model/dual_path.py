@@ -10,12 +10,13 @@ class DualPathModule(nn.Module):
         self.intra_bn = nn.BatchNorm2d(hidden_dim)
 
         # freq
-        self.inter_conv = nn.Conv2d(channels, hidden_dim, kernel_size=(3,1), padding=(1,0))
+        self.inter_conv = nn.Conv2d(hidden_dim, channels, kernel_size=(3,1), padding=(1,0))
         self.inter_bn = nn.BatchNorm2d(channels)
 
         self.relu = nn.ReLU()
 
     def forward(self,x):
+        residual = x
         intra = self.intra_conv(x)
         intra = self.intra_bn(intra)
         intra = self.relu(intra)
@@ -24,6 +25,6 @@ class DualPathModule(nn.Module):
         inter = self.inter_bn(inter)
         inter = self.relu(inter)
 
-        return x + inter
+        return inter + residual
 
     

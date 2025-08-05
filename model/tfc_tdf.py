@@ -14,6 +14,7 @@ class TFCTDFBlock(nn.Module):
         
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.15)
         self.tdf = nn.Linear(out_channels, min_bn_units)
         self.tdf_bn = nn.BatchNorm1d(min_bn_units)
         self.tdf_out = nn.Linear(min_bn_units, out_channels)
@@ -29,6 +30,7 @@ class TFCTDFBlock(nn.Module):
         x = self.conv(x)
         x = self.bn(x)
         x = self.relu(x)
+        x = self.dropout(x)
         b, c, f, t = x.shape
         x = x.permute(0, 2, 3, 1).reshape(b*f,t,c)
         x = self.tdf(x)

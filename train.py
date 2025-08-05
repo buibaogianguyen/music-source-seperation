@@ -139,7 +139,7 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = DTTNet(in_channels=2, num_sources=2, fft_bins=1024)
     model = model.to(device)
-    optim = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    optim = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.7, patience=2, min_lr=1e-6)
     criterion = TimeFreqDomainLoss(alpha=0.5)
     dataset = MUSDBDataset(root=root)
