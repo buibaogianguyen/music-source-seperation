@@ -55,7 +55,10 @@ class DTTNet(nn.Module):
             x = layer(x)
 
         masks = self.out_conv(x)
+        # masks = torch.clamp(masks, min=-6, max=6)
         masks = self.softplus(masks)
+        # print(masks.max().item())
+        masks = torch.clamp(masks, min=0, max=2)
 
         masks = masks.view(masks.size(0), -1, 2, masks.size(2), masks.size(3)) # (b,c,s,f,t)
         return masks
