@@ -10,6 +10,7 @@ from datasets import load_dataset
 import torchaudio
 import numpy as np
 import kagglehub
+import json
 
 class MUSDBDataset(Dataset):
     def __init__(self, root, split='train', sample_rate=44100, segment_len = 44100*4, augment=True):
@@ -64,6 +65,18 @@ class MUSDBDataset(Dataset):
         noise = torch.randn_like(waveform) * noise_level
         return waveform + noise
 
+def save_best_loss(loss, json_path='best_loss.json'):
+    data = {'best_loss': loss}
+    with open(json_path, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def load_best_loss(json_path='best_loss.json'):
+    if os.path.exists(json_path):
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            return data.get('best_loss', float('inf'))
+    return float('inf')
+
 def validate(model, criterion, device, dataloader, preprocessor, val_loader):
     model.eval()
     total_loss = 0.0
@@ -86,8 +99,13 @@ def validate(model, criterion, device, dataloader, preprocessor, val_loader):
             total_loss += loss.item()
     return total_loss / len(dataloader)
 
-def train(model, optim, criterion, epochs, device, dataloader, preprocessor, train_loader, val_loader, scheduler):
-    best_loss = float('inf')
+def train(model, optim, criterion, epochs, device, dataloader, preprocessor, train_loader, val_loader, scheduler, best_model_path):
+    best_loss = load_best_loss()
+    best_model_path = best_model_path
+
+    if os.path.exists(best_model_path):
+        model.load_state_dict(torch.load(best_model_path))
+
     for epoch in range(epochs):
         total_loss = 0.0
         model.train()
@@ -126,7 +144,8 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor, tra
         print(f'Epoch {epoch+1}, Train Loss: {avg_loss}, Val Loss: {val_loss}')
         if val_loss < best_loss:
             best_loss = val_loss
-            torch.save(model.state_dict(), 'best_model.pth')
+            torch.save(model.state_dict(), best_model_path)
+            save_best_loss(best_loss)
             print('Saved new best model')
         scheduler.step(epoch+1)
 
@@ -150,5 +169,6 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dataset, batch_size=12, shuffle=True, num_workers=8)
     val_loader = DataLoader(val_dataset, batch_size=12, shuffle=False, num_workers=8)
 
-    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader, preprocessor=preprocessor, train_loader=train_loader, val_loader=val_loader, scheduler=scheduler)
+    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader, 
+          preprocessor=preprocessor, train_loader=train_loader, val_loader=val_loader, scheduler=scheduler, best_model_path='best_model.pth')
 
