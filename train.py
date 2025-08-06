@@ -128,7 +128,7 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor, tra
             best_loss = val_loss
             torch.save(model.state_dict(), 'best_model.pth')
             print('Saved new best model')
-        scheduler.step(val_loss)
+        scheduler.step(epoch+1)
 
 
 if __name__ == '__main__':
@@ -140,8 +140,8 @@ if __name__ == '__main__':
     model = DTTNet(in_channels=2, num_sources=2, fft_bins=1024)
     model = model.to(device)
     optim = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, mode='min', factor=0.7, patience=2, min_lr=1e-6)
-    criterion = TimeFreqDomainLoss(alpha=0.5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optim, T_0=10, T_mult=2, eta_min=1e-6)
+    criterion = TimeFreqDomainLoss(alpha=0.7)
     dataset = MUSDBDataset(root=root)
     dataloader = DataLoader(dataset, batch_size=12, shuffle=True)
     preprocessor = Preprocessor(fft_bins=1024, hop_len=256, sample_rate=44100)
