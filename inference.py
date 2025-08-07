@@ -9,7 +9,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def infer(model, preprocessor, device, input_audio_path="C:/Users/buiba/UNET/UNET/master__a_hound.wav", output_dir="output"):
+def infer(model, preprocessor, device, input_audio_path="", output_dir="output"):
     try:
         logger.info(f"Loading {input_audio_path}")
         audio, sr = torchaudio.load(input_audio_path)
@@ -44,7 +44,7 @@ def infer(model, preprocessor, device, input_audio_path="C:/Users/buiba/UNET/UNE
                 with autocast('cuda'):
                     mix_spec = preprocessor.waveform_to_spectrogram(segment.unsqueeze(0))
                     mix_mag = preprocessor.normalize_spectrogram(mix_spec)
-                    masks = model(mix_mag)
+                    masks = model(mix_mag, use_sigmoid=True)
                     vocals_spec = masks[:, :, 0, :, :]
                     bg_spec = masks[:, :, 1, :, :]
                     mix_phase = preprocessor.get_phase(mix_spec)
@@ -66,11 +66,9 @@ def infer(model, preprocessor, device, input_audio_path="C:/Users/buiba/UNET/UNE
         vocals = vocals / (overlap_count + 1e-8)
         background = background / (overlap_count + 1e-8)
         
-        # Normalize amplitudes
         vocals = vocals / (vocals.abs().max() + 1e-8)
         background = background / (background.abs().max() + 1e-8)
         
-        # Save
         os.makedirs(output_dir, exist_ok=True)
         torchaudio.save(os.path.join(output_dir, "vocals.wav"), vocals.cpu(), 44100)
         torchaudio.save(os.path.join(output_dir, "background.wav"), background.cpu(), 44100)
@@ -88,7 +86,7 @@ if __name__ == '__main__':
         model = DTTNet(in_channels=2, num_sources=2, fft_bins=1024).to(device)
         model.load_state_dict(torch.load("best_model.pth", map_location=device))
         preprocessor = Preprocessor(fft_bins=1024, hop_len=256, sample_rate=44100)
-        infer(model, preprocessor, device, input_audio_path="C:/Users/buiba/UNET/UNET/master__a_hound.wav", output_dir="output")
+        infer(model, preprocessor, device, input_audio_path="", output_dir="output")
     except Exception as e:
         logger.error(f"Main execution failed: {str(e)}")
         raise

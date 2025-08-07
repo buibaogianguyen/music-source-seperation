@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils import spectral_norm
 from .tfc_tdf import TFCTDFBlock
 from .dual_path import DualPathModule
 
@@ -68,7 +69,6 @@ class DTTNet(nn.Module):
         
         if use_sigmoid:
             masks = torch.sigmoid(masks)
-            masks = masks * 3
         else:
             masks = self.softplus(masks)
             masks = torch.clamp(masks, min=1e-3, max=2.5)
