@@ -9,5 +9,6 @@ class TimeFreqDomainLoss(nn.Module):
 
     def forward(self, pred_wave, pred_spec, target_wave, target_spec):
         time_loss = self.l1(pred_wave, target_wave)
-        freq_loss = self.l1(pred_spec.abs(), target_spec.abs())
+        # freq_loss = self.l1(pred_spec.abs(), target_spec.abs())
+        freq_loss = self.l1(torch.log1p(pred_spec.abs()), torch.log1p(target_spec.abs()))
         return self.alpha*time_loss+(1-self.alpha)*freq_loss

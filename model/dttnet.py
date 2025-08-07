@@ -27,11 +27,20 @@ class DTTNet(nn.Module):
             TFCTDFBlock(32 + 32, 32)
         ])
 
+        self.decoder_bn = nn.ModuleList([
+            nn.BatchNorm2d(256 + 256),
+            nn.BatchNorm2d(256 + 256),
+            nn.BatchNorm2d(128 + 128),
+            nn.BatchNorm2d(64 + 64),
+            nn.BatchNorm2d(32 + 32),
+        ])
+
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         self.out_conv = nn.Conv2d(32,num_sources*in_channels, kernel_size=1)
         self.softplus = nn.Softplus(beta=1)
+        
     
-    def forward(self,x):
+    def forward(self,x, use_sigmoid=False):
         skips = []
 
         # Encoder
@@ -52,13 +61,17 @@ class DTTNet(nn.Module):
                     x = F.pad(x, (0, skip.size(3) - x.size(3), 0, skip.size(2) - x.size(2)))
 
             x = torch.cat([x, skip], dim=1)
+            x = self.decoder_bn[i](x)
             x = layer(x)
 
         masks = self.out_conv(x)
-        # masks = torch.clamp(masks, min=-6, max=6)
-        masks = self.softplus(masks)
-        # print(masks.max().item())
-        masks = torch.clamp(masks, min=0, max=2)
+        
+        if use_sigmoid:
+            masks = torch.sigmoid(masks)
+            masks = masks * 3
+        else:
+            masks = self.softplus(masks)
+            masks = torch.clamp(masks, min=1e-3, max=2.5)
 
         masks = masks.view(masks.size(0), -1, 2, masks.size(2), masks.size(3)) # (b,c,s,f,t)
         return masks

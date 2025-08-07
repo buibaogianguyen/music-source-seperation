@@ -77,7 +77,7 @@ def load_best_loss(json_path='best_loss.json'):
             return data.get('best_loss', float('inf'))
     return float('inf')
 
-def validate(model, criterion, device, dataloader, preprocessor, val_loader):
+def validate(model, criterion, device, preprocessor, val_loader):
     model.eval()
     total_loss = 0.0
     with torch.no_grad():
@@ -97,9 +97,9 @@ def validate(model, criterion, device, dataloader, preprocessor, val_loader):
             pred_bg = preprocessor.spectrogram_to_waveform(pred_bg_complex, mix.size(-1))
             loss = criterion(pred_vocals, pred_vocals_spec, vocals, vocals_spec) + criterion(pred_bg, pred_bg_spec, bg, bg_spec)
             total_loss += loss.item()
-    return total_loss / len(dataloader)
+    return total_loss / len(val_loader)
 
-def train(model, optim, criterion, epochs, device, dataloader, preprocessor, train_loader, val_loader, scheduler, best_model_path):
+def train(model, optim, criterion, epochs, device, preprocessor, train_loader, val_loader, scheduler, best_model_path):
     best_loss = load_best_loss()
     best_model_path = best_model_path
 
@@ -140,7 +140,7 @@ def train(model, optim, criterion, epochs, device, dataloader, preprocessor, tra
             total_loss += loss.item()
 
         avg_loss = total_loss / len(train_loader)
-        val_loss = validate(model, criterion, device, val_loader, preprocessor, val_loader)
+        val_loss = validate(model, criterion, device, preprocessor, val_loader)
         print(f'Epoch {epoch+1}, Train Loss: {avg_loss}, Val Loss: {val_loss}')
         if val_loss < best_loss:
             best_loss = val_loss
@@ -162,13 +162,13 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optim, T_0=10, T_mult=2, eta_min=1e-6)
     criterion = TimeFreqDomainLoss(alpha=0.7)
     dataset = MUSDBDataset(root=root)
-    dataloader = DataLoader(dataset, batch_size=12, shuffle=True)
+    # dataloader = DataLoader(dataset, batch_size=10, shuffle=True)
     preprocessor = Preprocessor(fft_bins=1024, hop_len=256, sample_rate=44100)
     train_dataset = MUSDBDataset(root=root, split='train', augment=True)
     val_dataset = MUSDBDataset(root=root, split='valid', augment=False)
-    train_loader = DataLoader(train_dataset, batch_size=12, shuffle=True, num_workers=8)
-    val_loader = DataLoader(val_dataset, batch_size=12, shuffle=False, num_workers=8)
+    train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=8)
+    val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, num_workers=8)
 
-    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, dataloader=dataloader, 
+    train(model, optim=optim, criterion=criterion, epochs=epochs, device=device, 
           preprocessor=preprocessor, train_loader=train_loader, val_loader=val_loader, scheduler=scheduler, best_model_path='best_model.pth')
 
