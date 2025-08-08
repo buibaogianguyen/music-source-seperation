@@ -14,7 +14,7 @@
 
 # Research Paper - Music Source Separation Based on a Lightweight Deep Learning Framework (DTTNET: DUAL-PATH TFC-TDF UNET) <a id="research-paper"></a>
 
-This model is a DTTNet deep-learning model based on the 2023 research paper [Music Source Separation Based on a Lightweight Deep Learning Framework (DTTNET: DUAL-PATH TFC-TDF UNET)](https://arxiv.org/abs/2309.08684), authored by Junyu Chen, Susmitha Vekkot, and Pancham Shukla. The model takes in a song's audio file and returns two audio files; one consists of the vocals, the other consists of the instrumentals, extracted from the original file.
+This model is a DTTNet deep-learning model based on the 2023 research paper [Music Source Separation Based on a Lightweight Deep Learning Framework (DTTNET: DUAL-PATH TFC-TDF UNET)](https://arxiv.org/abs/2309.08684), authored by Junyu Chen, Susmitha Vekkot, and Pancham Shukla. The model takes in a song's audio file and returns two audio files; one consists of the vocals, the other consists of the instrumentals, extracted from the original file. This architecture is trained using the [MUSDB18-HQ dataset](https://www.kaggle.com/datasets/quanglvitlm/musdb18-hq), credit to quanglvitlm on Kaggle.
 
 <p align="center">
 <img src="https://i.postimg.cc/L59QKQ24/x1.png" width="800">
