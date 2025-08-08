@@ -1,0 +1,5 @@
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.21.0
+datasets>=2.0.0
+kagglehub>=0.2.0
